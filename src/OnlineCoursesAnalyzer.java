@@ -7,6 +7,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class OnlineCoursesAnalyzer {
@@ -76,7 +78,14 @@ public class OnlineCoursesAnalyzer {
         map1 = on.getCourseListOfInstructor();
         map1.forEach(
             (k, v) -> v.forEach(t -> System.out.println(k + "=" + Arrays.toString(t.toArray()))));
-        List<String> list = on.searchCourses("Science",0,100);
+
+        List<String> list = on.searchCourses("Science", 0, 100);
+        System.out.println(Arrays.toString(list.toArray()));
+
+        list = on.getCourses(3, "hours");
+        System.out.println(Arrays.toString(list.toArray()));
+
+        list = on.recommendCourses(20,1,1);
         System.out.println(Arrays.toString(list.toArray()));
     }
 
@@ -120,8 +129,8 @@ public class OnlineCoursesAnalyzer {
 
     public List<String> searchCourses(String courseSubject, double
         percentAudited, double totalCourseHours) {
-        List<String> ans = new ArrayList<>();
-        array.stream().filter(t -> {
+        List<String> ans;
+        ans = array.stream().filter(t -> {
             String[] s = t[5].split(",");
             boolean sb = false;
             for (String e : s) {
@@ -132,8 +141,54 @@ public class OnlineCoursesAnalyzer {
             }
             return sb && Double.parseDouble(t[11]) >= percentAudited
                 && Double.parseDouble(t[16]) <= totalCourseHours;
-        }).forEach(t -> ans.add(t[3]));
+        }).map(t -> t[3]).collect(Collectors.toList());
         return ans;
+    }
+
+    public List<String> getCourses(int topK, String by) {
+        List<String> li = new ArrayList<>();
+        if (Objects.equals(by, "hours")) {
+            li = array.stream().sorted((o1, o2) -> {
+                if (Double.parseDouble(o1[17]) > Double.parseDouble(o2[17])) {
+                    return 1;
+                } else if (Double.parseDouble(o1[17]) < Double.parseDouble(o2[17])) {
+                    return -1;
+                } else {
+                    return o1[3].compareTo(o2[3]);
+                }
+            }).map(t -> t[3]).distinct().limit(topK).collect(Collectors.toList());
+        }
+        if (Objects.equals(by, "participants")) {
+            li = array.stream().sorted((o1, o2) -> {
+                if (Double.parseDouble(o1[8]) > Double.parseDouble(o2[8])) {
+                    return 1;
+                } else if (Double.parseDouble(o1[8]) < Double.parseDouble(o2[8])) {
+                    return -1;
+                } else {
+                    return o1[3].compareTo(o2[3]);
+                }
+            }).map(t -> t[3]).distinct().limit(topK).collect(Collectors.toList());
+        }
+        return li;
+    }
+
+    public List<String> recommendCourses(int age, int gender, int
+        isBachelorOrHigher) {
+        Map<String, Double> map1;
+        Map<String, Double> map2;
+        Map<String, Double> map3;
+        Map<String, Double> map4 = new HashMap<>();
+        map1 = array.stream().collect(Collectors.groupingBy(t -> t[3],
+            Collectors.averagingDouble(t -> Double.parseDouble(t[19]) * Integer.parseInt(t[8]))));
+        map2 = array.stream().collect(Collectors.groupingBy(t -> t[3],
+            Collectors.averagingDouble(t -> Double.parseDouble(t[20]) * Integer.parseInt(t[8]))));
+        map3 = array.stream().collect(Collectors.groupingBy(t -> t[3],
+            Collectors.averagingDouble(t -> Double.parseDouble(t[22]) * Integer.parseInt(t[8]))));
+        map1.forEach((k, v) ->
+            map4.put(k, (Math.pow(age - v, 2) + Math.pow(gender - map2.get(k), 2)) + Math.pow(
+                isBachelorOrHigher - map3.get(k), 2)));
+        return map4.entrySet().stream().sorted((o1, o2) -> 0).limit(10).map(Entry::getKey).collect(Collectors.toList());
+
     }
 
     static List<List<String>> getList() {
