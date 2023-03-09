@@ -1,14 +1,15 @@
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 public class OnlineCoursesAnalyzer {
 
     final int SIZE = 23;
 
-    HashSet<String[]> hashSet = new HashSet<>();
+    ArrayList<String[]> array = new ArrayList<>();
 
     public OnlineCoursesAnalyzer(String datasetPath) {
         BufferedReader reader;
@@ -48,7 +49,7 @@ public class OnlineCoursesAnalyzer {
                     }
                 }
                 midStrings[indexOfStrings] = sb.toString();
-                hashSet.add(midStrings);
+                array.add(midStrings);
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -58,6 +59,16 @@ public class OnlineCoursesAnalyzer {
     public static void main(String[] args) {
         OnlineCoursesAnalyzer on = new OnlineCoursesAnalyzer(
             "E:\\yysScript\\assigment1\\src\\local.csv");
-        on.hashSet.forEach(strings -> System.out.println(Arrays.toString(strings)));
+        Map<String,Integer> map = on.getPtcpCountByInst();
+        map.forEach((k,t) -> System.out.println(k + "=" + t));
     }
+
+    public Map<String, Integer> getPtcpCountByInst() {
+        Map<String, Integer> map;
+        map = array.stream().collect(
+            Collectors.groupingBy(t -> t[0], Collectors.summingInt(t -> Integer.parseInt(t[8]))));
+        return map;
+    }
+
+
 }
