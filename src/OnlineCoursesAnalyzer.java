@@ -29,7 +29,6 @@ public class OnlineCoursesAnalyzer {
                         continue;
                     }
                     if (now == '"') {
-                        sb.append(now);
                         while (index < row.length()) {
                             now = row.charAt(index++);
                             if (now != '"') {
@@ -38,7 +37,6 @@ public class OnlineCoursesAnalyzer {
                                 break;
                             }
                         }
-                        sb.append(now);
                         midStrings[indexOfStrings++] = sb.toString();
                         sb = new StringBuilder();
                         index++;
@@ -61,6 +59,9 @@ public class OnlineCoursesAnalyzer {
             "E:\\yysScript\\assigment1\\src\\local.csv");
         Map<String,Integer> map = on.getPtcpCountByInst();
         map.forEach((k,t) -> System.out.println(k + "=" + t));
+        map = on.getPtcpCountByInstAndSubject();
+        map.forEach((k,t) -> System.out.println(k + "=" + t));
+
     }
 
     public Map<String, Integer> getPtcpCountByInst() {
@@ -69,6 +70,13 @@ public class OnlineCoursesAnalyzer {
             Collectors.groupingBy(t -> t[0], Collectors.summingInt(t -> Integer.parseInt(t[8]))));
         return map;
     }
+
+    public Map<String, Integer> getPtcpCountByInstAndSubject(){
+        Map<String,Integer> map;
+        map = array.stream().collect(Collectors.groupingBy(t -> (t[0] +"-"+ t[5]),Collectors.summingInt(t -> Integer.parseInt(t[8]))));
+        return map;
+    }
+
 
 
 }
