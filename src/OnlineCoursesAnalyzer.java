@@ -1,202 +1,179 @@
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Objects;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * This is just a demo for you, please run it on JDK17. This is just a demo, and you can extend and
+ * implement functions based on this demo, or implement it in a different way.
+ */
 public class OnlineCoursesAnalyzer {
 
-    final int SIZE = 23;
-
-    ArrayList<String[]> array = new ArrayList<>();
+    List<Course> courses = new ArrayList<>();
 
     public OnlineCoursesAnalyzer(String datasetPath) {
-        BufferedReader reader;
+        BufferedReader br = null;
+        String line;
         try {
-            reader = new BufferedReader(new FileReader(datasetPath));
-            String row;
-            reader.readLine();
-            while ((row = reader.readLine()) != null) {
-                int index = 0;
-                int indexOfStrings = 0;
-                StringBuilder sb = new StringBuilder();
-                String[] midStrings = new String[SIZE];
-                while (index < row.length()) {
-                    char now = row.charAt(index++);
-                    if (now != ',' && now != '"') {
-                        sb.append(now);
-                        continue;
-                    }
-                    if (now == '"') {
-                        while (index < row.length()) {
-                            now = row.charAt(index++);
-                            if (now != '"') {
-                                sb.append(now);
-                            } else {
-                                break;
-                            }
-                        }
-                        midStrings[indexOfStrings++] = sb.toString();
-                        sb = new StringBuilder();
-                        index++;
-                    }
-                    if (now == ',') {
-                        midStrings[indexOfStrings++] = sb.toString();
-                        sb = new StringBuilder();
-                    }
-                }
-                //add last
-                midStrings[indexOfStrings] = sb.toString();
-                array.add(midStrings);
+            br = new BufferedReader(new FileReader(datasetPath, StandardCharsets.UTF_8));
+            br.readLine();
+            while ((line = br.readLine()) != null) {
+                String[] info = line.split(",(?=([^\\\"]*\\\"[^\\\"]*\\\")*[^\\\"]*$)", -1);
+                Course course = new Course(info[0], info[1], new Date(info[2]), info[3], info[4],
+                    info[5],
+                    Integer.parseInt(info[6]), Integer.parseInt(info[7]), Integer.parseInt(info[8]),
+                    Integer.parseInt(info[9]), Integer.parseInt(info[10]),
+                    Double.parseDouble(info[11]),
+                    Double.parseDouble(info[12]), Double.parseDouble(info[13]),
+                    Double.parseDouble(info[14]),
+                    Double.parseDouble(info[15]), Double.parseDouble(info[16]),
+                    Double.parseDouble(info[17]),
+                    Double.parseDouble(info[18]), Double.parseDouble(info[19]),
+                    Double.parseDouble(info[20]),
+                    Double.parseDouble(info[20]), Double.parseDouble(info[21]));
+                courses.add(course);
             }
-            array.forEach(t -> {
-                t[4] = t[4].replace(", ", ",");
-                t[5] = t[5].replace(", ", ",");
-                t[5] = t[5].replace("and", "");
-            });
         } catch (IOException e) {
             e.printStackTrace();
+        } finally {
+            if (br != null) {
+                try {
+                    br.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
         }
     }
 
-    public static void main(String[] args) {
-        OnlineCoursesAnalyzer on = new OnlineCoursesAnalyzer(
-            "E:\\yysScript\\assigment1\\src\\local.csv");
-        Map<String, Integer> map = on.getPtcpCountByInst();
-        map.forEach((k, t) -> System.out.println(k + "=" + t));
-        map = on.getPtcpCountByInstAndSubject();
-        map.forEach((k, t) -> System.out.println(k + "=" + t));
-
-        Map<String, List<List<String>>> map1;
-        map1 = on.getCourseListOfInstructor();
-        map1.forEach(
-            (k, v) -> v.forEach(t -> System.out.println(k + "=" + Arrays.toString(t.toArray()))));
-
-        List<String> list = on.searchCourses("Science", 0, 100);
-        System.out.println(Arrays.toString(list.toArray()));
-
-        list = on.getCourses(3, "hours");
-        System.out.println(Arrays.toString(list.toArray()));
-
-        list = on.recommendCourses(20,1,1);
-        System.out.println(Arrays.toString(list.toArray()));
-    }
-
+    //1
     public Map<String, Integer> getPtcpCountByInst() {
         Map<String, Integer> map;
-        map = array.stream().collect(
-            Collectors.groupingBy(t -> t[0], Collectors.summingInt(t -> Integer.parseInt(t[8]))));
+        map = courses.stream().collect(
+            Collectors.groupingBy(t -> t.institution, Collectors.summingInt(t -> t.participants)));
         return map;
+
     }
 
+    //2
     public Map<String, Integer> getPtcpCountByInstAndSubject() {
-        Map<String, Integer> map;
-        map = array.stream().collect(Collectors.groupingBy(t -> (t[0] + "-" + t[5]),
-            Collectors.summingInt(t -> Integer.parseInt(t[8]))));
-        return map;
+        Map<String, Integer> map = courses.stream().collect(
+            Collectors.groupingBy(t -> t.institution + "-" + t.subject,
+                Collectors.summingInt(t -> t.participants)));
+        LinkedHashMap<String,Integer> st = new LinkedHashMap<>(16,0.75f,true);
+        map.entrySet().stream().sorted((o2, o1) -> {
+            if (o1.getValue() > o2.getValue()) {
+                return 1;
+            }
+            if (o1.getValue() < o2.getValue()) {
+                return -1;
+            } else {
+                return o1.getKey().compareTo(o2.getKey());
+            }
+        }).forEach(t -> st.put(t.getKey(),t.getValue()));
+        return st;
     }
 
+    //3
     public Map<String, List<List<String>>> getCourseListOfInstructor() {
-        HashSet<String> ins = new HashSet<>();
-        Map<String, List<List<String>>> ans = new HashMap<>();
-        array.forEach(t ->
-            ins.addAll(Arrays.asList(t[4].split(",")))
-        );
-
-        ins.forEach(t -> ans.put(t, getList()));
-        array.forEach(t -> {
-            String[] inst = t[4].split(",");
-            int length = inst.length;
-            if (length == 1) {
-                ans.get(inst[0]).get(0).add(t[3]);
-            }
-            if (length >= 2) {
-                Arrays.stream(inst).forEach(i -> ans.get(i).get(1).add(t[3]));
-            }
-        });
-        //sort
-        ans.forEach((k, v) ->
-            v.forEach(k1 -> k1.sort(String::compareTo)));
-        return ans;
+        return null;
     }
 
-    public List<String> searchCourses(String courseSubject, double
-        percentAudited, double totalCourseHours) {
-        List<String> ans;
-        ans = array.stream().filter(t -> {
-            String[] s = t[5].split(",");
-            boolean sb = false;
-            for (String e : s) {
-                if (e.equals(courseSubject)) {
-                    sb = true;
-                    break;
-                }
-            }
-            return sb && Double.parseDouble(t[11]) >= percentAudited
-                && Double.parseDouble(t[16]) <= totalCourseHours;
-        }).map(t -> t[3]).collect(Collectors.toList());
-        return ans;
-    }
-
+    //4
     public List<String> getCourses(int topK, String by) {
-        List<String> li = new ArrayList<>();
-        if (Objects.equals(by, "hours")) {
-            li = array.stream().sorted((o1, o2) -> {
-                if (Double.parseDouble(o1[17]) > Double.parseDouble(o2[17])) {
-                    return 1;
-                } else if (Double.parseDouble(o1[17]) < Double.parseDouble(o2[17])) {
-                    return -1;
-                } else {
-                    return o1[3].compareTo(o2[3]);
-                }
-            }).map(t -> t[3]).distinct().limit(topK).collect(Collectors.toList());
+        return null;
+    }
+
+    //5
+    public List<String> searchCourses(String courseSubject, double percentAudited,
+        double totalCourseHours) {
+        return null;
+    }
+
+    //6
+    public List<String> recommendCourses(int age, int gender, int isBachelorOrHigher) {
+        return null;
+    }
+
+}
+
+class Course {
+
+    String institution;
+    String number;
+    Date launchDate;
+    String title;
+    String instructors;
+    String subject;
+    int year;
+    int honorCode;
+    int participants;
+    int audited;
+    int certified;
+    double percentAudited;
+    double percentCertified;
+    double percentCertified50;
+    double percentVideo;
+    double percentForum;
+    double gradeHigherZero;
+    double totalHours;
+    double medianHoursCertification;
+    double medianAge;
+    double percentMale;
+    double percentFemale;
+    double percentDegree;
+
+    public Course(String institution, String number, Date launchDate,
+        String title, String instructors, String subject,
+        int year, int honorCode, int participants,
+        int audited, int certified, double percentAudited,
+        double percentCertified, double percentCertified50,
+        double percentVideo, double percentForum, double gradeHigherZero,
+        double totalHours, double medianHoursCertification,
+        double medianAge, double percentMale, double percentFemale,
+        double percentDegree) {
+        this.institution = institution;
+        this.number = number;
+        this.launchDate = launchDate;
+        if (title.startsWith("\"")) {
+            title = title.substring(1);
         }
-        if (Objects.equals(by, "participants")) {
-            li = array.stream().sorted((o1, o2) -> {
-                if (Double.parseDouble(o1[8]) > Double.parseDouble(o2[8])) {
-                    return 1;
-                } else if (Double.parseDouble(o1[8]) < Double.parseDouble(o2[8])) {
-                    return -1;
-                } else {
-                    return o1[3].compareTo(o2[3]);
-                }
-            }).map(t -> t[3]).distinct().limit(topK).collect(Collectors.toList());
+        if (title.endsWith("\"")) {
+            title = title.substring(0, title.length() - 1);
         }
-        return li;
+        this.title = title;
+        if (instructors.startsWith("\"")) {
+            instructors = instructors.substring(1);
+        }
+        if (instructors.endsWith("\"")) {
+            instructors = instructors.substring(0, instructors.length() - 1);
+        }
+        this.instructors = instructors;
+        if (subject.startsWith("\"")) {
+            subject = subject.substring(1);
+        }
+        if (subject.endsWith("\"")) {
+            subject = subject.substring(0, subject.length() - 1);
+        }
+        this.subject = subject;
+        this.year = year;
+        this.honorCode = honorCode;
+        this.participants = participants;
+        this.audited = audited;
+        this.certified = certified;
+        this.percentAudited = percentAudited;
+        this.percentCertified = percentCertified;
+        this.percentCertified50 = percentCertified50;
+        this.percentVideo = percentVideo;
+        this.percentForum = percentForum;
+        this.gradeHigherZero = gradeHigherZero;
+        this.totalHours = totalHours;
+        this.medianHoursCertification = medianHoursCertification;
+        this.medianAge = medianAge;
+        this.percentMale = percentMale;
+        this.percentFemale = percentFemale;
+        this.percentDegree = percentDegree;
     }
-
-    public List<String> recommendCourses(int age, int gender, int
-        isBachelorOrHigher) {
-        Map<String, Double> map1;
-        Map<String, Double> map2;
-        Map<String, Double> map3;
-        Map<String, Double> map4 = new HashMap<>();
-        map1 = array.stream().collect(Collectors.groupingBy(t -> t[3],
-            Collectors.averagingDouble(t -> Double.parseDouble(t[19]) * Integer.parseInt(t[8]))));
-        map2 = array.stream().collect(Collectors.groupingBy(t -> t[3],
-            Collectors.averagingDouble(t -> Double.parseDouble(t[20]) * Integer.parseInt(t[8]))));
-        map3 = array.stream().collect(Collectors.groupingBy(t -> t[3],
-            Collectors.averagingDouble(t -> Double.parseDouble(t[22]) * Integer.parseInt(t[8]))));
-        map1.forEach((k, v) ->
-            map4.put(k, (Math.pow(age - v, 2) + Math.pow(gender - map2.get(k), 2)) + Math.pow(
-                isBachelorOrHigher - map3.get(k), 2)));
-        return map4.entrySet().stream().sorted((o1, o2) -> 0).limit(10).map(Entry::getKey).collect(Collectors.toList());
-
-    }
-
-    static List<List<String>> getList() {
-        List<List<String>> lists = new ArrayList<>();
-        lists.add(new ArrayList<>());
-        lists.add(new ArrayList<>());
-        return lists;
-    }
-
-
 }
