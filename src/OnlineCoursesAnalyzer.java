@@ -62,7 +62,7 @@ public class OnlineCoursesAnalyzer {
         Map<String, Integer> map = courses.stream().collect(
             Collectors.groupingBy(t -> t.institution + "-" + t.subject,
                 Collectors.summingInt(t -> t.participants)));
-        LinkedHashMap<String,Integer> st = new LinkedHashMap<>(16,0.75f,true);
+        LinkedHashMap<String, Integer> st = new LinkedHashMap<>(16, 0.75f, true);
         map.entrySet().stream().sorted((o2, o1) -> {
             if (o1.getValue() > o2.getValue()) {
                 return 1;
@@ -72,13 +72,49 @@ public class OnlineCoursesAnalyzer {
             } else {
                 return o1.getKey().compareTo(o2.getKey());
             }
-        }).forEach(t -> st.put(t.getKey(),t.getValue()));
+        }).forEach(t -> st.put(t.getKey(), t.getValue()));
         return st;
     }
 
     //3
     public Map<String, List<List<String>>> getCourseListOfInstructor() {
-        return null;
+        Map<String, List<List<String>>> maps = new HashMap<>();
+        courses.stream().map(t -> t.instructors.replace(", ", ",").split(","))
+            .forEach(t -> Arrays.stream(t).forEach(s -> {
+                if (maps.get(s) == null) {
+                    List<String> a = new ArrayList<>();
+                    List<String> b = new ArrayList<>();
+                    List<List<String>> big = new ArrayList<>();
+                    big.add(a);
+                    big.add(b);
+                    maps.put(s, big);
+                }
+            }));
+        courses.stream().map(t -> new String[]{t.title, t.instructors}).forEach(t -> {
+            String[] strings = t[1].replace(", ", ",").split(",");
+            if (strings.length != 1) {
+                Arrays.stream(strings).forEach(s -> {
+                    if (!maps.get(s).get(1).contains(t[0])) {
+                        maps.get(s).get(1).add(t[0]);
+                    }
+                });
+            }
+            if (strings.length == 1) {
+                if (!maps.get(strings[0]).get(0).contains(t[0])) {
+                    maps.get(strings[0]).get(0).add(t[0]);
+                }
+            }
+        });
+        maps.forEach((key, value) -> {
+            value.get(0).sort(String::compareTo);
+            value.get(1).sort(String::compareTo);
+        });
+        maps.forEach((key, value) -> {
+            System.out.print(key + " == ");
+            System.out.println(value);
+        });
+
+        return maps;
     }
 
     //4
