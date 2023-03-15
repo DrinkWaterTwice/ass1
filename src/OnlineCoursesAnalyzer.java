@@ -3,6 +3,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.Map.Entry;
 import java.util.stream.Collectors;
 
 /**
@@ -119,20 +120,115 @@ public class OnlineCoursesAnalyzer {
 
     //4
     public List<String> getCourses(int topK, String by) {
+        HashMap<String, Double> ans = new HashMap<>();
+        if ("hours".equals(by)) {
+            return courses.stream().sorted((o2, o1) -> {
+                if (o1.totalHours > o2.totalHours) {
+                    return 1;
+                }
+                if (o1.totalHours < o2.totalHours) {
+                    return -1;
+                }
+                return o1.title.compareTo(o2.title);
+
+            }).map(t -> t.title).distinct().limit(topK).collect(Collectors.toList());
+        }
+        if ("participants".equals(by)) {
+            return courses.stream().sorted((o2, o1) -> {
+                if (o1.participants > o2.participants) {
+                    return 1;
+                }
+                if (o1.participants < o2.participants) {
+                    return -1;
+                }
+                return o1.title.compareTo(o2.title);
+
+            }).map(t -> t.title).distinct().limit(topK).collect(Collectors.toList());
+
+        }
         return null;
     }
 
     //5
     public List<String> searchCourses(String courseSubject, double percentAudited,
         double totalCourseHours) {
-        return null;
+        List<String> lis = new ArrayList<>(courses.stream()
+            .filter(t -> t.subject.toLowerCase().contains(courseSubject.toLowerCase())).filter(
+                t -> t.percentAudited >= percentAudited
+            ).filter(t -> t.totalHours <= totalCourseHours).map(t -> t.title).distinct().toList());
+        lis.sort(String::compareTo);
+        return lis;
     }
 
     //6
     public List<String> recommendCourses(int age, int gender, int isBachelorOrHigher) {
-        return null;
+        HashMap<String, CourseByNumber> hashMap = new HashMap<>();
+        courses.forEach(t -> {
+            if (hashMap.get(t.number) == null) {
+                CourseByNumber c = new CourseByNumber();
+                c.totalAge = t.medianAge * t.participants;
+                c.totalGender = t.percentMale * t.participants;
+                c.totalIsBach = t.percentDegree * t.participants;
+                c.lastCourse = t.title;
+                c.date = t.launchDate;
+                c.totalPeo = t.participants;
+                hashMap.put(t.number, c);
+            } else {
+                CourseByNumber c = hashMap.get(t.number);
+                c.totalAge += t.medianAge * t.participants;
+                c.totalGender += t.percentMale * t.participants;
+                c.totalIsBach += t.percentDegree * t.participants;
+                c.totalPeo += t.participants;
+                if (t.launchDate.after(c.date)) {
+                    c.date = t.launchDate;
+                    c.lastCourse = t.title;
+                }
+            }
+        });
+        return hashMap.entrySet().stream().sorted((o1, o2) -> {
+            if (getSimilar(o1.getValue(), age, gender, isBachelorOrHigher) > getSimilar(
+                o2.getValue(), age, gender, isBachelorOrHigher)) {
+                return 1;
+            }
+            if (getSimilar(o1.getValue(), age, gender, isBachelorOrHigher) < getSimilar(
+                o2.getValue(), age, gender, isBachelorOrHigher)) {
+                return -1;
+            }
+            return o1.getValue().lastCourse.compareTo(o2.getValue().lastCourse);
+        }).map(t ->  t.getValue().lastCourse).distinct().limit(10).collect(Collectors.toList());
+
     }
 
+    public double getSimilar(CourseByNumber course, int age, int gender, int isBachelorOrHigher) {
+        return Math.pow(age - course.getAvgAge(), 2) + Math.pow(
+            gender * 100 - course.getTotalGender(), 2) +
+            Math.pow(isBachelorOrHigher * 100 - course.getTotalIsBach() * 100, 2);
+    }
+
+}
+
+class CourseByNumber {
+
+    double totalAge;
+    double totalGender;
+    double totalIsBach;
+    String lastCourse;
+
+    Date date;
+
+    int totalPeo;
+
+    public double getAvgAge() {
+        return totalAge / totalPeo;
+    }
+
+    public double getTotalGender() {
+        return totalGender / totalPeo;
+    }
+
+    public double getTotalIsBach() {
+        return totalIsBach / totalPeo;
+    }
 }
 
 class Course {
